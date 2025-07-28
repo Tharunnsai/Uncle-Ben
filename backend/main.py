@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
 from datetime import datetime, timedelta
 import uvicorn
+import json
 
 from backend.models import (
     LoginRequest, RegisterRequest, ChatRequest, ChatResponse, 
@@ -12,6 +13,10 @@ from backend.auth import create_access_token, get_current_user
 from backend.database import db
 from backend.chat_service import chat_service
 import config
+
+# Google Calendar OAuth setup
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
 
 app = FastAPI(title="Chatbot Calendar API")
 
@@ -130,13 +135,86 @@ async def get_appointments(current_user: dict = Depends(get_current_user)):
 
 @app.post("/google-calendar/connect")
 async def connect_google_calendar(current_user: dict = Depends(get_current_user)):
-    """Initiate Google Calendar OAuth flow"""
-    # This would typically redirect to Google OAuth
-    # For now, return instructions
-    return {
-        "message": "To connect Google Calendar, please provide your Google OAuth credentials",
-        "instructions": "This would typically start OAuth flow with Google Calendar API"
-    }
+    """Start Google Calendar OAuth flow"""
+    try:
+        # Create OAuth flow
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": config.GOOGLE_CLIENT_ID,
+                    "client_secret": config.GOOGLE_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": ["http://localhost:8000/google-calendar/callback"]
+                }
+            },
+            scopes=['https://www.googleapis.com/auth/calendar']
+        )
+        flow.redirect_uri = "http://localhost:8000/google-calendar/callback"
+        
+        # Get authorization URL
+        auth_url, _ = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true',
+            login_hint=current_user["email"],
+            state=current_user["id"]  # Pass user ID in state
+        )
+        
+        return {"auth_url": auth_url, "message": "Click the URL to connect your Google Calendar"}
+        
+    except Exception as e:
+        return {"error": f"OAuth setup error: {str(e)}", "message": "Google Calendar connection failed"}
+
+@app.get("/google-calendar/callback")
+async def google_calendar_callback(code: str, state: str = None):
+    """Handle Google Calendar OAuth callback"""
+    try:
+        # Exchange code for credentials
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": config.GOOGLE_CLIENT_ID,
+                    "client_secret": config.GOOGLE_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": ["http://localhost:8000/google-calendar/callback"]
+                }
+            },
+            scopes=['https://www.googleapis.com/auth/calendar']
+        )
+        flow.redirect_uri = "http://localhost:8000/google-calendar/callback"
+        
+        # Fetch token
+        flow.fetch_token(code=code)
+        credentials = flow.credentials
+        
+        # Save credentials to database (add column if needed)
+        if state:  # user_id from state parameter
+            try:
+                # Add google_calendar_token column if it doesn't exist
+                token_data = {
+                    "token": credentials.token,
+                    "refresh_token": credentials.refresh_token,
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "client_id": config.GOOGLE_CLIENT_ID,
+                    "client_secret": config.GOOGLE_CLIENT_SECRET,
+                    "scopes": list(credentials.scopes) if credentials.scopes else ["https://www.googleapis.com/auth/calendar"]
+                }
+                
+                # Try to update user with Google Calendar token
+                db.supabase.table("users").update({
+                    "google_calendar_token": json.dumps(token_data)
+                }).eq("id", state).execute()
+                
+                return {"message": "Google Calendar connected successfully! You can now book appointments."}
+            except Exception as db_error:
+                print(f"Database error: {db_error}")
+                return {"message": "Google Calendar connected, but couldn't save to database. Appointments will be saved locally."}
+        
+        return {"message": "Google Calendar connected successfully"}
+        
+    except Exception as e:
+        return {"error": f"OAuth callback error: {str(e)}"}
 
 @app.get("/health")
 async def health_check():

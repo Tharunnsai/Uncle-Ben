@@ -21,9 +21,24 @@ class GoogleCalendarTools:
             if not user_result.data:
                 return None
                 
-            # For now, return None since Google Calendar isn't connected yet
-            # This will force the system to use local-only appointment storage
-            return None
+            # Check if user has Google Calendar token in database
+            user_data = user_result.data[0]
+            if not user_data.get("google_calendar_token"):
+                return None
+            
+            # Parse and use the stored credentials
+            token_data = json.loads(user_data["google_calendar_token"])
+            credentials = Credentials(
+                token=token_data.get("token"),
+                refresh_token=token_data.get("refresh_token"),
+                token_uri=token_data.get("token_uri"),
+                client_id=token_data.get("client_id"),
+                client_secret=token_data.get("client_secret"),
+                scopes=token_data.get("scopes")
+            )
+            
+            self.service = build('calendar', 'v3', credentials=credentials)
+            return self.service
         except Exception as e:
             print(f"Error initializing calendar service: {e}")
             return None

@@ -57,12 +57,19 @@ class ChatService:
         """Main agent node for processing messages"""
         messages = state["messages"]
         
-        # Add system message with context
-        system_message = SystemMessage(content="""
+        # Add system message with current date context
+        from datetime import datetime
+        current_date = datetime.now().strftime("%A, %B %d, %Y")
+        current_time = datetime.now().strftime("%I:%M %p")
+        
+        system_message = SystemMessage(content=f"""
         You are a helpful AI assistant with access to Google Calendar appointment management tools.
         
+        IMPORTANT: Today is {current_date} and the current time is {current_time}.
+        Use this information when interpreting relative dates like "tomorrow", "next week", "today", etc.
+        
         You can help users with:
-        - Booking new appointments
+        - Booking new appointments  
         - Viewing existing appointments
         - Cancelling appointments
         - Checking availability
@@ -73,11 +80,13 @@ class ChatService:
         - Date and time (start and end)
         - Description (optional)
         
+        When booking appointments, always convert times to ISO format (YYYY-MM-DDTHH:MM:SS) for the tools.
+        
         Always use the available tools to interact with Google Calendar.
         Be conversational and helpful in your responses.
         
-        Current user ID: {user_id}
-        """.format(user_id=state["user_id"]))
+        Current user ID: {state["user_id"]}
+        """)
         
         full_messages = [system_message] + messages
         response = self.llm_with_tools.invoke(full_messages)
