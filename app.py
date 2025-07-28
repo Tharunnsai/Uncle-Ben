@@ -180,7 +180,14 @@ def main_chat_interface():
         if st.button("🔗 Connect Calendar"):
             result = make_api_request("/google-calendar/connect", method="POST")
             if result["success"]:
-                st.success("Calendar connection initiated!")
+                data = result["data"]
+                if "auth_url" in data:
+                    st.success("✅ Calendar connection ready!")
+                    st.markdown("**Click the link below to connect your Google Calendar:**")
+                    st.markdown(f"[🔗 Connect Google Calendar]({data['auth_url']})")
+                    st.info("After connecting, you can book appointments that sync with your Gmail calendar!")
+                else:
+                    st.success(data.get("message", "Calendar connection initiated!"))
             else:
                 st.error("Failed to connect calendar")
         

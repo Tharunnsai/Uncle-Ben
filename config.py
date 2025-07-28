@@ -15,4 +15,5 @@ JWT_ALGORITHM = "HS256"
 BACKEND_URL = "http://localhost:8000"
 
 # Model Configuration
-GROQ_MODEL = "deepseek-r1-distill-llama-70b"
+# Switch to llama3-70b which doesn't show reasoning process
+GROQ_MODEL = "llama3-70b-8192"

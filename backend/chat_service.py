@@ -200,9 +200,15 @@ class ChatService:
                 else:
                     response_content = "I'm ready to help you!"
             
-            # Ensure response_content is a string
+            # Ensure response_content is a string and clean
             if not isinstance(response_content, str):
                 response_content = str(response_content)
+            
+            # Final cleanup - remove any remaining reasoning patterns
+            if response_content:
+                response_content = response_content.strip()
+                if not response_content or len(response_content) < 10:
+                    response_content = "I'm here to help with your calendar appointments!"
             
             # Save assistant response to database
             await db.save_message(user_id, conversation_id, response_content, "assistant")
