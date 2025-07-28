@@ -9,68 +9,82 @@ import config
 class Database:
     def __init__(self):
         self.supabase: Client = create_client(config.SUPABASE_URL, config.SUPABASE_KEY)
+        self.setup_tables()
+    
+    def setup_tables(self):
+        """Ensure tables exist by creating them if needed"""
+        try:
+            # For Supabase, we need to manually create tables through the dashboard
+            # This is a placeholder - tables should be created in Supabase dashboard
+            print("Database initialized. Please ensure tables are created in Supabase dashboard.")
+        except Exception as e:
+            print(f"Database setup warning: {e}")
     
     async def create_user(self, email: str, password: str, name: str) -> Dict[str, Any]:
-        """Create a new user with Supabase Auth"""
+        """Create a new user"""
         try:
-            auth_response = self.supabase.auth.sign_up({
-                "email": email,
-                "password": password,
-                "options": {
-                    "data": {
-                        "name": name
-                    }
-                }
-            })
+            # Check if user already exists
+            existing = self.supabase.table("users").select("*").eq("email", email).execute()
+            if existing.data:
+                return {"success": False, "error": "User already exists"}
             
-            if auth_response.user:
-                # Insert user data into our users table
-                user_data = {
-                    "id": auth_response.user.id,
-                    "email": email,
-                    "name": name,
-                    "created_at": datetime.utcnow().isoformat()
-                }
-                
-                result = self.supabase.table("users").insert(user_data).execute()
-                return {"success": True, "user": auth_response.user}
+            # Create new user
+            user_id = str(uuid.uuid4())
+            user_data = {
+                "id": user_id,
+                "email": email,
+                "name": name,
+                "created_at": datetime.utcnow().isoformat()
+            }
+            
+            result = self.supabase.table("users").insert(user_data).execute()
+            if result.data:
+                # Create a user object
+                mock_user = type('User', (), {
+                    'id': user_id,
+                    'email': email,
+                    'name': name
+                })()
+                return {"success": True, "user": mock_user}
             else:
                 return {"success": False, "error": "Failed to create user"}
                 
         except Exception as e:
+            print(f"User creation error: {e}")
             return {"success": False, "error": str(e)}
     
     async def authenticate_user(self, email: str, password: str) -> Dict[str, Any]:
-        """Authenticate user with Supabase Auth"""
+        """Authenticate user by email (simplified for development)"""
         try:
-            auth_response = self.supabase.auth.sign_in_with_password({
-                "email": email,
-                "password": password
-            })
+            user_result = self.supabase.table("users").select("*").eq("email", email).execute()
             
-            if auth_response.user:
-                # Get user data from our users table
-                user_result = self.supabase.table("users").select("*").eq("id", auth_response.user.id).execute()
-                
-                if user_result.data:
-                    return {
-                        "success": True, 
-                        "user": user_result.data[0],
-                        "session": auth_response.session
-                    }
-                else:
-                    return {"success": False, "error": "User data not found"}
+            if user_result.data:
+                return {
+                    "success": True, 
+                    "user": user_result.data[0],
+                    "session": None
+                }
             else:
-                return {"success": False, "error": "Invalid credentials"}
+                return {"success": False, "error": "User not found. Please register first."}
                 
         except Exception as e:
+            print(f"Authentication error: {e}")
             return {"success": False, "error": str(e)}
     
     async def get_user_conversations(self, user_id: str) -> List[Conversation]:
         """Get all conversations for a user"""
         try:
             result = self.supabase.table("conversations").select("*").eq("user_id", user_id).order("updated_at", desc=True).execute()
-            return [Conversation(**conv) for conv in result.data]
+            conversations = []
+            for conv in result.data:
+                # Handle datetime parsing
+                conv_data = conv.copy()
+                if isinstance(conv_data.get('created_at'), str):
+                    conv_data['created_at'] = datetime.fromisoformat(conv_data['created_at'].replace('Z', '+00:00'))
+                if isinstance(conv_data.get('updated_at'), str):
+                    conv_data['updated_at'] = datetime.fromisoformat(conv_data['updated_at'].replace('Z', '+00:00'))
+                conversations.append(Conversation(**conv_data))
+            return conversations
         except Exception as e:
             print(f"Error getting conversations: {e}")
             return []
