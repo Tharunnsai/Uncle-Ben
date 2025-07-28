@@ -266,9 +266,15 @@ def main():
     # Check backend health
     health_result = make_api_request("/health", auth_required=False)
     if not health_result["success"]:
-        st.error("⚠️ Backend service is not available. Please ensure the backend is running.")
-        st.code("To start the backend, run: python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000")
+        st.error("⚠️ Backend service is not available.")
+        st.info("The backend is starting up. Please wait a moment and refresh the page.")
+        st.code("Backend should be running on: http://localhost:8000")
         return
+    
+    # Show database setup instructions if needed
+    if not st.session_state.authenticated:
+        # Check if this is a database error by trying to register
+        st.info("💡 **First time setup:** If you see database errors, please set up your Supabase database tables first. Check the README_DATABASE_SETUP.md file for instructions.")
     
     if not st.session_state.authenticated:
         login_page()
