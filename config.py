@@ -1,6 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv()
-
 import os
 
 # API Keys and Configuration
@@ -14,8 +11,8 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "placeholder_google_cli
 JWT_SECRET = os.getenv("JWT_SECRET", "placeholder_jwt_secret")
 JWT_ALGORITHM = "HS256"
 
-# Backend Configuration - Handle both local and production
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+# Backend Configuration - Hardcoded for production
+BACKEND_URL = "https://uncle-ben-backend.onrender.com"
 
 # Model Configuration
 # Switch to llama3-70b which doesn't show reasoning process
