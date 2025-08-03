@@ -145,12 +145,12 @@ async def connect_google_calendar(current_user: dict = Depends(get_current_user)
                     "client_secret": config.GOOGLE_CLIENT_SECRET,
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": ["https://uncle-ben-backend.onrender.com/google-calendar/callback"]
+                    "redirect_uris": ["http://localhost:8000/google-calendar/callback"]
                 }
             },
             scopes=['https://www.googleapis.com/auth/calendar']
         )
-        flow.redirect_uri = "https://uncle-ben-backend.onrender.com/google-calendar/callback"
+        flow.redirect_uri = "http://localhost:8000/google-calendar/callback"
         
         # Get authorization URL
         auth_url, _ = flow.authorization_url(
@@ -177,12 +177,12 @@ async def google_calendar_callback(code: str, state: str = None):
                     "client_secret": config.GOOGLE_CLIENT_SECRET,
                     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                     "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": ["https://uncle-ben-backend.onrender.com/google-calendar/callback"]
+                    "redirect_uris": ["http://localhost:8000/google-calendar/callback"]
                 }
             },
             scopes=['https://www.googleapis.com/auth/calendar']
         )
-        flow.redirect_uri = "https://uncle-ben-backend.onrender.com/google-calendar/callback"
+        flow.redirect_uri = "http://localhost:8000/google-calendar/callback"
         
         # Fetch token
         flow.fetch_token(code=code)
